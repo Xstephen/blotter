@@ -3,4 +3,4 @@
 git branch -M sync
 git add .
 git commit -S -m "Sync"
-git push origin sync:sync
+git push origin sync:sync -f

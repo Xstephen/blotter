@@ -2,6 +2,7 @@ package blotter
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"reflect"
@@ -19,30 +20,36 @@ type Blotter struct {
 	handle         *Handle
 	globalVariable map[string]interface{}
 	Logger         *log.Logger
+	server         http.Server
 }
 
 // NewBlotter 构造一个Blotter对象
 func NewBlotter(address string, router map[string]AnyFunc, logger *log.Logger) Blotter {
 	blotter := Blotter{
-		address: address,
-		handle:  nil,
-		Logger:  logger,
+		Logger: logger,
+		server: http.Server{
+			Addr:    address,
+			Handler: nil,
+		},
 	}
 	handle := Handle{
 		router:  router,
 		Blotter: &blotter,
 	}
-	blotter.handle = &handle
+	blotter.server.Handler = &handle
 	return blotter
 }
 
 // Start 启动Blotter服务
 func (b *Blotter) Start() {
-	http.ListenAndServe(b.address, b.handle)
+	fmt.Printf("Server start at %s\n", b.server.Addr)
+	b.server.ListenAndServe()
 }
 
+// Stop 关闭Blotter服务
 func (b *Blotter) Stop() {
-	
+	fmt.Println("Server stop")
+	b.server.Shutdown(nil)
 }
 
 // Handle Blotter路由处理
@@ -56,9 +63,9 @@ func (handle *Handle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Path
 	solveFunc, ok := handle.router[url]
 
-	argsRaw := r.URL.Query()
+	r.ParseForm()
 	args := map[string]string{}
-	for key, value := range argsRaw {
+	for key, value := range r.Form {
 		args[key] = value[0]
 	}
 	argsBytes, _ := json.Marshal(args)
