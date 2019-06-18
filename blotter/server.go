@@ -2,7 +2,7 @@ package blotter
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 	"reflect"
 )
@@ -16,28 +16,39 @@ type AnyFunc interface{}
 // Blotter 服务端数据结构
 type Blotter struct {
 	address        string
-	handle         Handle
+	handle         *Handle
 	globalVariable map[string]interface{}
+	Logger         *log.Logger
 }
 
 // NewBlotter 构造一个Blotter对象
-func NewBlotter(address string, router map[string]AnyFunc) Blotter {
-	return Blotter{
+func NewBlotter(address string, router map[string]AnyFunc, logger *log.Logger) Blotter {
+	blotter := Blotter{
 		address: address,
-		handle: Handle{
-			router: router,
-		},
+		handle:  nil,
+		Logger:  logger,
 	}
+	handle := Handle{
+		router:  router,
+		Blotter: &blotter,
+	}
+	blotter.handle = &handle
+	return blotter
 }
 
 // Start 启动Blotter服务
 func (b *Blotter) Start() {
-	http.ListenAndServe(b.address, &b.handle)
+	http.ListenAndServe(b.address, b.handle)
+}
+
+func (b *Blotter) Stop() {
+	
 }
 
 // Handle Blotter路由处理
 type Handle struct {
-	router map[string]AnyFunc
+	router  map[string]AnyFunc
+	Blotter *Blotter
 }
 
 // ServeHTTP http路由处理函数
@@ -52,18 +63,20 @@ func (handle *Handle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	argsBytes, _ := json.Marshal(args)
 
-	fmt.Println(url, string(argsBytes))
+	handle.Blotter.Logger.Println(url, string(argsBytes))
 
 	if ok {
-		w.Write(Solve(argsBytes, solveFunc))
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(handle.Blotter.Solve(argsBytes, solveFunc))
 	} else {
 		// 404
+		w.WriteHeader(404)
 		w.Write([]byte("404 Not Found"))
 	}
 }
 
 // Solve 处理函数装饰函数
-func Solve(data []byte, f interface{}) []byte {
+func (b *Blotter) Solve(data []byte, f interface{}) []byte {
 	// 被装饰函数类型获取
 	funcType := reflect.TypeOf(f)
 	inputType := funcType.In(0)
@@ -73,7 +86,7 @@ func Solve(data []byte, f interface{}) []byte {
 	inputData := reflect.New(inputType).Interface()
 	err := json.Unmarshal(data, inputData)
 	if err != nil {
-		fmt.Println(err)
+		b.Logger.Println(err)
 	}
 	args := []reflect.Value{reflect.ValueOf(inputData).Elem()}
 
@@ -84,7 +97,7 @@ func Solve(data []byte, f interface{}) []byte {
 	outputData := outputDataList[0].Interface()
 	res, _ := json.Marshal(outputData)
 
-	fmt.Printf("%+v %+v %+v %+v \n", funcType, string(data), inputData, args[0])
+	b.Logger.Printf("%+v %+v %+v %+v \n", funcType, string(data), inputData, args[0])
 
 	return res
 }

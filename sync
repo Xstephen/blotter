@@ -1,0 +1,6 @@
+#!/bin/sh
+
+git branch -M sync
+git add .
+git commit -S -m "Sync"
+git push origin sync:sync

@@ -2,7 +2,12 @@ package blotter
 
 import (
 	"bytes"
+	"log"
+	"net/http"
+	"os"
 	"testing"
+
+	"../util/nilwriter"
 )
 
 // TestSolve
@@ -53,12 +58,19 @@ func TestSolve(t *testing.T) {
 		},
 	}
 
+	blotter := NewBlotter(":8080", map[string]AnyFunc{}, log.New(nilwriter.NilWriter{}, "", log.LstdFlags))
 	for _, test := range tests {
-		actual := Solve(test.in.data, test.in.f)
+		actual := blotter.Solve(test.in.data, test.in.f)
 		if bytes.Compare(actual, test.expected) != 0 {
 			t.Errorf("[×] in: %+v out: %+v expected: %+v\n", test.in, actual, test.expected)
 		} else {
 			t.Logf("[√] in: %+v out: %+v expected: %+v\n", test.in, actual, test.expected)
 		}
 	}
+}
+
+func TestBlotter(t *testing.T) {
+	blotter := NewBlotter(":8080", map[string]AnyFunc{}, log.New(os.Stdout, "[blotter]", log.LstdFlags))
+	go blotter.Start()
+	http.Get()
 }
