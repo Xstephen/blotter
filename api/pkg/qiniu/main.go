@@ -27,7 +27,7 @@ func GenerateToken(bucker string ) (token string) {
 	accessKey, secretKey := getKeys()
 	mac := qbox.NewMac(accessKey, secretKey)
 	putPolicy := storage.PutPolicy{
-		Scope:   bucker,
+		Scope:   "blotter-storage-xp",
 		Expires: 60,
 	}
 	token = putPolicy.UploadToken(mac)
