@@ -45,8 +45,6 @@ func PostAdmin(context register.HandleContext) (err error) {
 		return
 	}
 
-	go post.IncView(args.URL)
-
 	if res.URL == args.URL && args.URL != "" {
 		context.ReturnJSON(res)
 	} else {
